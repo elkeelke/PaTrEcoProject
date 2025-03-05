@@ -64,7 +64,26 @@ with open('data/timeline.csv', 'w') as file:
 ```{r}
 df <- read_delim("data/gps1_20250226.csv")
 tf <- read_delim("data/timeline_v1.csv")
+schienen_gdb_path <- "data/schienennetz_2056_de.gdb/"
+schienen_layers <- st_layers(schienen_gdb_path)
+#Available layers:
+#     layer_name              geometry_type features fields       crs_name
+#1 Fehlerprofile                         NA       48      7           <NA>
+#2   Netzsegment          Multi Line String     3424     16 CH1903+ / LV95
+#3       KmLinie Measured Multi Line String      460      9 CH1903+ / LV95
+#4    Netzknoten                      Point     3210     10 CH1903+ / LV95
+schienen_Netzsegment <- read_sf(schienen_gdb_path, layer = "Netzsegment")
+schienen_KmLinie <- read_sf(schienen_gdb_path, layer = "KmLinie")
+schienen_Netzknoten <- read_sf(schienen_gdb_path, layer = "Netzknoten")
 ```
+
+## EDA
+```{r}
+ggplot() +
+  geom_sf(data = schienen_KmLinie) +
+  geom_sf(data = schienen_Netzknoten)
+```
+
 
 ## Combine data
 ```{r}
