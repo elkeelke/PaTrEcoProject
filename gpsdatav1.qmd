@@ -40,18 +40,17 @@ def find_location_data(data):
       # Recursively call the function if the value is a dictionary or list
       if isinstance(value, (dict, list)):
         locations.extend(find_location_data(value))
-    
   # If data is a list, iterate over each item
   elif isinstance(data, list):
-      for item in data:
-        locations.extend(find_location_data(item))
-    return locations
+    for item in data:
+      locations.extend(find_location_data(item))
+  return locations
   
 with open('data/timeline.json', 'r') as file:
   records_json = file.read()
 
 data = json.loads(records_json)
-location_data = find_location_data(data)
+location_data = find_location_data(data['rawSignals'])
 
 with open('data/timeline.csv', 'w') as file:
   file.write("Latitude,Longitude\n")
@@ -63,7 +62,11 @@ with open('data/timeline.csv', 'w') as file:
 ## Read data
 ```{r}
 df <- read_delim("data/gps1_20250226.csv")
+<<<<<<< HEAD
 tf <- read_delim("data/timeline_v1.csv")
+=======
+tf <- read_delim("data/timeline.csv")
+>>>>>>> 0082c55 (Fix a bug in location extraction.)
 schienen_gdb_path <- "data/schienennetz_2056_de.gdb/"
 schienen_layers <- st_layers(schienen_gdb_path)
 #Available layers:
