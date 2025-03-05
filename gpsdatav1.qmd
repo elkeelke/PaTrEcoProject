@@ -47,13 +47,13 @@ def find_location_data(data):
         locations.extend(find_location_data(item))
     return locations
   
-with open('timeline.json', 'r') as file:
+with open('data/timeline.json', 'r') as file:
   records_json = file.read()
 
 data = json.loads(records_json)
 location_data = find_location_data(data)
 
-with open('timeline.csv', 'w') as file:
+with open('data/timeline.csv', 'w') as file:
   file.write("Latitude,Longitude\n")
   for item in location_data:
     item = item.replace("°", "")
@@ -62,8 +62,8 @@ with open('timeline.csv', 'w') as file:
 
 ## Read data
 ```{r}
-df <- read_delim("gps1_20250226.csv")
-tf <- read_delim("timeline.csv")
+df <- read_delim("data/gps1_20250226.csv")
+tf <- read_delim("data/timeline_v1.csv")
 ```
 
 ## Combine data
