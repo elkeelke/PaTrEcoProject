@@ -62,11 +62,7 @@ with open('data/timeline.csv', 'w') as file:
 ## Read data
 ```{r}
 df <- read_delim("data/gps1_20250226.csv")
-<<<<<<< HEAD
-tf <- read_delim("data/timeline_v1.csv")
-=======
 tf <- read_delim("data/timeline.csv")
->>>>>>> 0082c55 (Fix a bug in location extraction.)
 schienen_gdb_path <- "data/schienennetz_2056_de.gdb/"
 schienen_layers <- st_layers(schienen_gdb_path)
 #Available layers:
