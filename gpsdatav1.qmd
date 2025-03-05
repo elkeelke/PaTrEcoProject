@@ -1,0 +1,116 @@
+---
+title: "GPSTracker"
+format: html
+editor: visual
+---
+
+## Load libraries
+```{r}
+library("readr")
+library("ggplot2")
+library("sf")
+library("dplyr")
+library("tmap")
+library("jsonlite")
+library("reticulate")
+library("stringr")
+library("gitcreds")
+```
+
+## Connect to Github
+```{r}
+gitcreds_set()
+gitcreds_get()
+```
+
+## Extract coordinates from timeline data
+```{python}
+import json
+import csv
+
+# List of keys that indicate location data
+location_keys = ['point', 'latlng']
+
+def find_location_data(data):
+  locations = []
+  if isinstance(data, dict):
+    for key, value in data.items():
+      if key.lower() in location_keys:
+        locations.append(value)
+      # Recursively call the function if the value is a dictionary or list
+      if isinstance(value, (dict, list)):
+        locations.extend(find_location_data(value))
+    
+  # If data is a list, iterate over each item
+  elif isinstance(data, list):
+      for item in data:
+        locations.extend(find_location_data(item))
+    return locations
+  
+with open('timeline.json', 'r') as file:
+  records_json = file.read()
+
+data = json.loads(records_json)
+location_data = find_location_data(data)
+
+with open('timeline.csv', 'w') as file:
+  file.write("Latitude,Longitude\n")
+  for item in location_data:
+    item = item.replace("°", "")
+    file.write(item + "\n")
+```
+
+## Read data
+```{r}
+df <- read_delim("gps1_20250226.csv")
+tf <- read_delim("timeline.csv")
+```
+
+## Combine data
+```{r}
+df_1 <- df |> filter(Quality == "1") |> mutate(Source = "tracker-qual1")
+df_2 <- df |> filter(Quality == "2") |> mutate(Source = "tracker-qual2")
+tf <- tf |> mutate(Source = "timeline")
+tf <- tf |> mutate(Latitude = str_replace_all(Latitude, " ", ""))
+tf <- tf |> mutate(Longitude = str_replace_all(Longitude, " ", ""))
+tf <- tf |> mutate(Latitude = as.double(Latitude))
+tf <- tf |> mutate(Longitude = as.double(Longitude))
+df <- bind_rows(df_1, df_2)
+df <- bind_rows(df, tf)
+
+counts <- df |> 
+  group_by(Source) |> 
+  summarise(n())
+print(counts)
+```
+
+## Prepare data
+```{r}
+sf <- st_as_sf(df, coords = c("Longitude", "Latitude"), crs = 4326)
+sf <- st_transform(sf, 2056)
+```
+
+## Plot data
+```{r}
+ggplot(df, aes(Longitude, Latitude, color = Source)) +
+  geom_point() +
+  theme(legend.position = "none")
+```
+
+```{r}
+mcp <- st_convex_hull(sf)
+plot(mcp)
+```
+
+```{r}
+ggplot(mcp, aes()) +
+  geom_sf(alpha = 0.4)
+```
+
+```{r}
+tmap_mode("view")
+my_palette <- c("darkred", "orange", "lightblue")
+tmap_options(basemaps = "OpenStreetMap")
+tm_shape(mcp) +
+  tm_dots(col = "Source", palette = my_palette)
+```
