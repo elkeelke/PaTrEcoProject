@@ -81,20 +81,26 @@ schienen_Netzknoten <- read_sf(schienen_gdb_path, layer = "Netzknoten")
 ggplot() +
   geom_sf(data = schienen_KmLinie) +
   geom_sf(data = schienen_Netzknoten)
+
+hist(df$Dilution)
 ```
 
 
 ## Combine data
 ```{r}
-df_1 <- df |> filter(Quality == "1") |> mutate(Source = "tracker-qual1")
-df_2 <- df |> filter(Quality == "2") |> mutate(Source = "tracker-qual2")
+#df_1 <- df |> filter(Quality == "1") |> mutate(Source = "tracker-qual1")
+#df_2 <- df |> filter(Quality == "2") |> mutate(Source = "tracker-qual2")
+df_1 <- df |> filter(Dilution < 1) |> mutate(Source = "tracker-DOP<1")
+df_2 <- df |> filter(Dilution >= 1 & Dilution < 2) |> mutate(Source = "tracker-DOP<2")
+df_3 <- df |> filter(Dilution >= 2 & Dilution < 5) |> mutate(Source = "tracker-DOP<5")
+df_4 <- df |> filter(Dilution >= 5 & Dilution < 10) |> mutate(Source = "tracker-DOP<10")
+df_5 <- df |> filter(Dilution >= 10) |> mutate(Source = "tracker-DOP>10")
 tf <- tf |> mutate(Source = "timeline")
 tf <- tf |> mutate(Latitude = str_replace_all(Latitude, " ", ""))
 tf <- tf |> mutate(Longitude = str_replace_all(Longitude, " ", ""))
 tf <- tf |> mutate(Latitude = as.double(Latitude))
 tf <- tf |> mutate(Longitude = as.double(Longitude))
-df <- bind_rows(df_1, df_2)
-df <- bind_rows(df, tf)
+df <- bind_rows(tf, df_1, df_2, df_3, df_4, df_5)
 
 counts <- df |> 
   group_by(Source) |> 
@@ -127,7 +133,7 @@ ggplot(mcp, aes()) +
 
 ```{r}
 tmap_mode("view")
-my_palette <- c("darkred", "orange", "lightblue")
+my_palette <- c("darkred", "orange", "lightblue", "lightgreen", "purple", "pink")
 tmap_options(basemaps = "OpenStreetMap")
 tm_shape(mcp) +
   tm_dots(col = "Source", palette = my_palette)
