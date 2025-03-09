@@ -5,6 +5,7 @@ editor: visual
 ---
 
 ## Load libraries
+
 ```{r}
 library("readr")
 library("ggplot2")
@@ -18,12 +19,14 @@ library("gitcreds")
 ```
 
 ## Connect to Github
+
 ```{r}
 gitcreds_set()
 gitcreds_get()
 ```
 
 ## Extract coordinates from timeline data
+
 ```{python}
 import json
 import csv
@@ -60,36 +63,21 @@ with open('data/timeline.csv', 'w') as file:
 ```
 
 ## Read data
+
 ```{r}
 df <- read_delim("data/gps2_20250308.csv")
 tf <- read_delim("data/timeline.csv")
-schienen_gdb_path <- "data/schienennetz_2056_de.gdb/"
-schienen_layers <- st_layers(schienen_gdb_path)
-#Available layers:
-#     layer_name              geometry_type features fields       crs_name
-#1 Fehlerprofile                         NA       48      7           <NA>
-#2   Netzsegment          Multi Line String     3424     16 CH1903+ / LV95
-#3       KmLinie Measured Multi Line String      460      9 CH1903+ / LV95
-#4    Netzknoten                      Point     3210     10 CH1903+ / LV95
-schienen_Netzsegment <- read_sf(schienen_gdb_path, layer = "Netzsegment")
-schienen_KmLinie <- read_sf(schienen_gdb_path, layer = "KmLinie")
-schienen_Netzknoten <- read_sf(schienen_gdb_path, layer = "Netzknoten")
 ```
 
 ## EDA
-```{r}
-ggplot() +
-  geom_sf(data = schienen_KmLinie) +
-  geom_sf(data = schienen_Netzknoten)
 
+```{r}
 hist(df$Dilution)
 ```
 
-
 ## Combine data
+
 ```{r}
-#df_1 <- df |> filter(Quality == "1") |> mutate(Source = "tracker-qual1")
-#df_2 <- df |> filter(Quality == "2") |> mutate(Source = "tracker-qual2")
 df_1 <- df |> filter(Dilution < 1) |> mutate(Source = "tracker-DOP<1")
 df_2 <- df |> filter(Dilution >= 1 & Dilution < 2) |> mutate(Source = "tracker-DOP<2")
 df_3 <- df |> filter(Dilution >= 2 & Dilution < 5) |> mutate(Source = "tracker-DOP<5")
@@ -100,7 +88,7 @@ tf <- tf |> mutate(Latitude = str_replace_all(Latitude, " ", ""))
 tf <- tf |> mutate(Longitude = str_replace_all(Longitude, " ", ""))
 tf <- tf |> mutate(Latitude = as.double(Latitude))
 tf <- tf |> mutate(Longitude = as.double(Longitude))
-df <- bind_rows(tf, df_1, df_2, df_3, df_4, df_5)
+df <- bind_rows(df_1, df_2, df_3, df_4, df_5)
 
 counts <- df |> 
   group_by(Source) |> 
@@ -109,12 +97,14 @@ print(counts)
 ```
 
 ## Prepare data
+
 ```{r}
 sf <- st_as_sf(df, coords = c("Longitude", "Latitude"), crs = 4326)
 sf <- st_transform(sf, 2056)
 ```
 
 ## Plot data
+
 ```{r}
 ggplot(df, aes(Longitude, Latitude, color = Source)) +
   geom_point() +
@@ -137,4 +127,51 @@ my_palette <- c("darkred", "orange", "lightblue", "lightgreen", "purple", "pink"
 tmap_options(basemaps = "OpenStreetMap")
 tm_shape(mcp) +
   tm_dots(col = "Source", palette = my_palette)
+```
+
+## Trains
+
+```{r}
+tracks_gdb_path <- "data/schienennetz_2056_de.gdb/"
+tracks_layers <- st_layers(tracks_gdb_path)
+#Available layers:
+#     layer_name              geometry_type features fields       crs_name
+#1 Fehlerprofile                         NA       48      7           <NA>
+#2   Netzsegment          Multi Line String     3424     16 CH1903+ / LV95
+#3       KmLinie Measured Multi Line String      460      9 CH1903+ / LV95
+#4    Netzknoten                      Point     3210     10 CH1903+ / LV95
+tracks_segment <- read_sf(tracks_gdb_path, layer = "Netzsegment")
+tracks_line <- read_sf(tracks_gdb_path, layer = "KmLinie")
+tracks_nodes <- read_sf(tracks_gdb_path, layer = "Netzknoten")
+ggplot() +
+  geom_sf(data = tracks_line) +
+  geom_sf(data = tracks_nodes)
+```
+
+
+```{r}
+tracks_line <- st_union(st_zm(tracks_line))
+
+# Find GPS locations that are close to train tracks
+gps_locations <- st_as_sf(tracks_line) |> st_buffer(300) |> st_join(sf)
+
+# Now we can get the nearest point for each GPS location
+nearest <- st_nearest_points(gps_locations, tracks_line)
+
+# The output is a line for each point (see plot below)
+# Now we need convert the output from LINE to POINT. 
+# This doubles the number of features
+near_p <- st_cast(nearest, "POINT")
+
+# now we subset the points. Uneven numbers are the original
+# points, even numbers are the new, mapmatched points.
+near_from <- near_p[c(TRUE, FALSE)]
+near_to <- near_p[c(FALSE,TRUE)]
+```
+
+```{r}
+tm_shape(gps_locations) + tm_lines() +
+  tm_shape(nearest) + tm_lines(lty = 3) +
+  tm_shape(near_from) + tm_dots() +
+  tm_shape(near_to) + tm_dots(col = "red")
 ```
