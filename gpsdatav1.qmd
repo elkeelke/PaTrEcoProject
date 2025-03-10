@@ -61,6 +61,7 @@ with open('data/timeline.csv', 'w') as file:
     file.write(item + "\n")
 ```
 
+# Tracking data
 ## Read data
 ```{r}
 df <- read_delim("data/gps2_20250308.csv")
@@ -123,8 +124,7 @@ tm_shape(mcp) +
   tm_dots(col = "Source", palette = my_palette)
 ```
 
-# Train tracks
-
+# Trains
 ## Read data
 ```{r}
 tracks_gdb_path <- "data/schienennetz_2056_de.gdb/"
@@ -147,7 +147,7 @@ ggplot() +
   geom_sf(data = tracks_nodes)
 ```
 
-## Snap GPS fixes to train track.
+## Snap GPS fixes to train track
 ```{r}
 tracks_line <- st_union(st_zm(tracks_line))
 
@@ -163,26 +163,6 @@ nearest <- st_nearest_points(joined, tracks_line)
 # Now we need convert the output from LINE to POINT. 
 # This doubles the number of features
 near_p <- st_cast(nearest, "POINT")
-
-# TBD: Pre-select fixes close to tracks instead of post filtering by distance.
-pairs <- lapply(seq(1, length(near_p), by = 2), function(i) {
-  point1 <- near_p[[i]]
-  point2 <- if (i + 1 <= length(near_p)) near_p[[i + 1]] else NULL
-  if (st_distance(point1, point2) < 30)
-    return(list(point1, point2))
-})
-
-dt_close_points <- list()
-for (pair in pairs) {
-  if (!is.null(pair)) {
-    point1 <- pair[[1]]
-    point2 <- pair[[2]]
-    if (st_distance(point1, point2) < 30) {
-      dt_close_points <- append(dt_close_points, point1)
-      dt_close_points <- append(dt_close_points, point2)
-    }
-  }
-}
 
 # now we subset the points. Uneven numbers are the original
 # points, even numbers are the new, mapmatched points.
