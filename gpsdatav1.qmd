@@ -5,7 +5,6 @@ editor: visual
 ---
 
 ## Load libraries
-
 ```{r}
 library("readr")
 library("ggplot2")
@@ -19,14 +18,12 @@ library("gitcreds")
 ```
 
 ## Connect to Github
-
 ```{r}
 gitcreds_set()
 gitcreds_get()
 ```
 
 ## Extract coordinates from timeline data
-
 ```{python}
 import json
 import csv
@@ -63,20 +60,17 @@ with open('data/timeline.csv', 'w') as file:
 ```
 
 ## Read data
-
 ```{r}
 df <- read_delim("data/gps2_20250308.csv")
 tf <- read_delim("data/timeline.csv")
 ```
 
 ## EDA
-
 ```{r}
 hist(df$Dilution)
 ```
 
 ## Combine data
-
 ```{r}
 df_1 <- df |> filter(Dilution < 1) |> mutate(Source = "tracker-DOP<1")
 df_2 <- df |> filter(Dilution >= 1 & Dilution < 2) |> mutate(Source = "tracker-DOP<2")
@@ -97,14 +91,12 @@ print(counts)
 ```
 
 ## Prepare data
-
 ```{r}
 sf <- st_as_sf(df, coords = c("Longitude", "Latitude"), crs = 4326)
 sf <- st_transform(sf, 2056)
 ```
 
 ## Plot data
-
 ```{r}
 ggplot(df, aes(Longitude, Latitude, color = Source)) +
   geom_point() +
@@ -157,14 +149,13 @@ ggplot() +
 ```{r}
 tracks_line <- st_union(st_zm(tracks_line))
 
-# Select the GPS locations that are close to train tracks. TBD: Doesn't work.
-buffer_50m <- tracks_line |> st_buffer(30)
-#joined <- st_intersection(sf, st_as_sf(buffer))
-#anzahl_in_buffer <- sum(!is.na(joined$...21))
-#anzahl_nicht_in_buffer <- sum(is.na(joined$...21))
+# Select the GPS locations that are close to train tracks.
+buffer_30m <- tracks_line |> st_buffer(30)
+joined <- st_intersection(st_as_sfc(sf), buffer_30m)
+#ggplot() + geom_sf(data = joined)
 
 # Get the nearest point for each GPS location. 
-nearest <- st_nearest_points(sf, tracks_line)
+nearest <- st_nearest_points(joined, tracks_line)
 
 # The output is a line for each point (see plot below)
 # Now we need convert the output from LINE to POINT. 
@@ -193,8 +184,8 @@ for (pair in pairs) {
 
 # now we subset the points. Uneven numbers are the original
 # points, even numbers are the new, mapmatched points.
-near_from <- dt_close_points[c(TRUE, FALSE)] # original GPS fixes
-near_to <- dt_close_points[c(FALSE,TRUE)] # nearest track line points
+near_from <- near_p[c(TRUE, FALSE)] # original GPS fixes
+near_to <- near_p[c(FALSE,TRUE)] # nearest track line points
 ```
 
 ## Visualize
