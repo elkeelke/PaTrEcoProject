@@ -4,6 +4,7 @@ format: html
 editor: visual
 ---
 
+# Setup
 ## Load libraries
 ```{r}
 library("readr")
@@ -23,6 +24,7 @@ gitcreds_set()
 gitcreds_get()
 ```
 
+# Timeline
 ## Extract coordinates from timeline data
 ```{python}
 import json
