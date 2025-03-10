@@ -1,0 +1,54 @@
+---
+title: "Red Kite Analysis"
+format: html
+editor: visual
+---
+
+## Libraries
+```{r}
+library("readr")
+library("ggplot2")
+library("sf")
+library("dplyr")
+library("tmap")
+library("lubridate")
+library("tidyr")
+```
+
+## Load data
+```{r}
+# From https://www.movebank.org/cms/webapp?gwt_fragment=page=studies,path=study501903109
+df <- read_delim("data/Red Kite MPI-AB Baden-Wuerttemberg.csv")
+df <- df |> 
+  mutate(year = year(timestamp)) |>
+  mutate(month = month(timestamp)) |>
+  mutate(month_year = paste(as.character(month(timestamp)), as.character(year(timestamp)), sep = "-"))
+```
+
+## EDA
+```{r}
+summary <- df |> 
+  group_by(year, month) |> 
+  summarise(count = n())
+summary
+```
+
+## Prepare data
+```{r}
+sf <- st_as_sf(df, coords = c("location-long", "location-lat"), crs = 4326)
+sf <- st_transform(sf, 2056)
+```
+
+```{r}
+mcp <- st_convex_hull(sf)
+#plot(mcp, max.plot = 52)
+```
+
+## Visualize
+```{r}
+tmap_mode("view")
+tmap_options(basemaps = "OpenStreetMap")
+tm_shape(mcp) +
+  tm_dots(col = "month_year")
+```
+
