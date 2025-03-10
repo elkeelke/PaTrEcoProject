@@ -88,7 +88,7 @@ tf <- tf |> mutate(Latitude = str_replace_all(Latitude, " ", ""))
 tf <- tf |> mutate(Longitude = str_replace_all(Longitude, " ", ""))
 tf <- tf |> mutate(Latitude = as.double(Latitude))
 tf <- tf |> mutate(Longitude = as.double(Longitude))
-df <- bind_rows(df_1, df_2, df_3, df_4, df_5)
+df <- bind_rows(df_2) #, df_2, df_3, df_4, df_5)
 
 counts <- df |> 
   group_by(Source) |> 
@@ -113,7 +113,7 @@ ggplot(df, aes(Longitude, Latitude, color = Source)) +
 
 ```{r}
 mcp <- st_convex_hull(sf)
-plot(mcp)
+plot(mcp, max.plot = 22)
 ```
 
 ```{r}
@@ -123,14 +123,15 @@ ggplot(mcp, aes()) +
 
 ```{r}
 tmap_mode("view")
-my_palette <- c("darkred", "orange", "lightblue", "lightgreen", "purple", "pink")
 tmap_options(basemaps = "OpenStreetMap")
+my_palette <- c("darkred", "orange", "lightblue", "lightgreen", "purple", "pink")
 tm_shape(mcp) +
   tm_dots(col = "Source", palette = my_palette)
 ```
 
-## Trains
+# Train tracks
 
+## Read data
 ```{r}
 tracks_gdb_path <- "data/schienennetz_2056_de.gdb/"
 tracks_layers <- st_layers(tracks_gdb_path)
@@ -143,34 +144,64 @@ tracks_layers <- st_layers(tracks_gdb_path)
 tracks_segment <- read_sf(tracks_gdb_path, layer = "Netzsegment")
 tracks_line <- read_sf(tracks_gdb_path, layer = "KmLinie")
 tracks_nodes <- read_sf(tracks_gdb_path, layer = "Netzknoten")
+```
+
+## EDA
+```{r}
 ggplot() +
   geom_sf(data = tracks_line) +
   geom_sf(data = tracks_nodes)
 ```
 
-
+## Snap GPS fixes to train track.
 ```{r}
 tracks_line <- st_union(st_zm(tracks_line))
 
-# Find GPS locations that are close to train tracks
-gps_locations <- st_as_sf(tracks_line) |> st_buffer(300) |> st_join(sf)
+# Select the GPS locations that are close to train tracks. TBD: Doesn't work.
+buffer_50m <- tracks_line |> st_buffer(30)
+#joined <- st_intersection(sf, st_as_sf(buffer))
+#anzahl_in_buffer <- sum(!is.na(joined$...21))
+#anzahl_nicht_in_buffer <- sum(is.na(joined$...21))
 
-# Now we can get the nearest point for each GPS location
-nearest <- st_nearest_points(gps_locations, tracks_line)
+# Get the nearest point for each GPS location. 
+nearest <- st_nearest_points(sf, tracks_line)
 
 # The output is a line for each point (see plot below)
 # Now we need convert the output from LINE to POINT. 
 # This doubles the number of features
 near_p <- st_cast(nearest, "POINT")
 
+# TBD: Pre-select fixes close to tracks instead of post filtering by distance.
+pairs <- lapply(seq(1, length(near_p), by = 2), function(i) {
+  point1 <- near_p[[i]]
+  point2 <- if (i + 1 <= length(near_p)) near_p[[i + 1]] else NULL
+  if (st_distance(point1, point2) < 30)
+    return(list(point1, point2))
+})
+
+dt_close_points <- list()
+for (pair in pairs) {
+  if (!is.null(pair)) {
+    point1 <- pair[[1]]
+    point2 <- pair[[2]]
+    if (st_distance(point1, point2) < 30) {
+      dt_close_points <- append(dt_close_points, point1)
+      dt_close_points <- append(dt_close_points, point2)
+    }
+  }
+}
+
 # now we subset the points. Uneven numbers are the original
 # points, even numbers are the new, mapmatched points.
-near_from <- near_p[c(TRUE, FALSE)]
-near_to <- near_p[c(FALSE,TRUE)]
+near_from <- dt_close_points[c(TRUE, FALSE)] # original GPS fixes
+near_to <- dt_close_points[c(FALSE,TRUE)] # nearest track line points
 ```
 
+## Visualize
 ```{r}
-tm_shape(gps_locations) + tm_lines() +
+tmap_mode("view")
+tmap_options(basemaps = "OpenStreetMap")
+tm_shape(tracks_line) + tm_lines() +
   tm_shape(nearest) + tm_lines(lty = 3) +
   tm_shape(near_from) + tm_dots() +
   tm_shape(near_to) + tm_dots(col = "red")
