@@ -4,6 +4,17 @@ format: html
 editor: visual
 ---
 
+# Project introduction
+
+I experimented with snap-to-train based on the coding example from [the course website](https://computationalmovementanalysis.github.io/FS25/Appendix/Appendix.html#mapmatching-gps-points-to-the-road-network) 
+
+![Snap-to-track results for train and tram](images/train_and_tram.png){#fig-train-and-tram}
+
+I encountered the following issues that need resolving:
+* Walking next to tracks: How to select Wollishofen - Wädenswil only?
+* Multiple tracks (Thalwil area): How to select one track only?
+* Train stops in station: How to exlude non-movement periods?
+
 # Setup
 ## Load libraries
 ```{r}
@@ -20,6 +31,8 @@ library("gitcreds")
 
 ## Connect to Github
 ```{r}
+#| eval: false
+#| include: false
 gitcreds_set()
 gitcreds_get()
 ```
@@ -85,7 +98,7 @@ tf <- tf |> mutate(Latitude = str_replace_all(Latitude, " ", ""))
 tf <- tf |> mutate(Longitude = str_replace_all(Longitude, " ", ""))
 tf <- tf |> mutate(Latitude = as.double(Latitude))
 tf <- tf |> mutate(Longitude = as.double(Longitude))
-df <- bind_rows(df_2) #, df_2, df_3, df_4, df_5)
+df <- bind_rows(df_1, df_2, df_3, df_4, df_5)
 
 counts <- df |> 
   group_by(Source) |> 
@@ -154,20 +167,19 @@ tracks_line <- st_union(st_zm(tracks_line))
 # Select the GPS locations that are close to train tracks.
 buffer_30m <- tracks_line |> st_buffer(30)
 joined <- st_intersection(st_as_sfc(sf), buffer_30m)
-#ggplot() + geom_sf(data = joined)
 
 # Get the nearest point for each GPS location. 
 nearest <- st_nearest_points(joined, tracks_line)
 
 # The output is a line for each point (see plot below)
 # Now we need convert the output from LINE to POINT. 
-# This doubles the number of features
+# This doubles the number of features.
 near_p <- st_cast(nearest, "POINT")
 
-# now we subset the points. Uneven numbers are the original
-# points, even numbers are the new, mapmatched points.
-near_from <- near_p[c(TRUE, FALSE)] # original GPS fixes
-near_to <- near_p[c(FALSE,TRUE)] # nearest track line points
+# Subset the points. Uneven numbers are the original points.
+# Even numbers are the new, mapmatched points.
+near_from <- near_p[c(TRUE, FALSE)]  # Original GPS fixes.
+near_to <- near_p[c(FALSE,TRUE)]  # Nearest track line points.
 ```
 
 ## Visualize
