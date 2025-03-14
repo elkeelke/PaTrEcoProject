@@ -1,0 +1,97 @@
+---
+title: "Foxes"
+format: html
+editor: visual
+---
+
+## Libraries
+```{r}
+library("readr")
+library("ggplot2")
+library("sf")
+library("dplyr")
+library("tmap")
+library("lubridate")
+library("tidyr")
+```
+
+## Load data
+```{r}
+# From https://www.movebank.org/cms/webapp?gwt_fragment=page=studies,path=study501903109
+df <- read_delim("data/Red Fox (Vulpes vulpes) in UK wet grasslands.csv")
+df <- df |> 
+  mutate(year = year(timestamp)) |>
+  mutate(month = month(timestamp)) |>
+  mutate(month_year = paste(as.character(month(timestamp)), as.character(year(timestamp)), sep = "-"))
+```
+
+## EDA
+```{r}
+summary <- df |> 
+  group_by(year, month) |> 
+  summarise(count = n())
+summary
+
+summary_indi <- df |> 
+  group_by(`individual-local-identifier`) |> 
+  summarise(count = n())
+summary_indi
+```
+
+## Prepare data
+```{r}
+sf <- st_as_sf(df, coords = c("location-long", "location-lat"), crs = 4326, remove = FALSE)
+sf <- st_transform(sf, 2056)
+```
+
+```{r}
+distance_by_element <- function(later, now) {
+  as.numeric(
+    st_distance(later, now, by_element = TRUE)
+  )
+}
+# Data every 10 minute or every 60 minutes
+sf <- sf |>
+  mutate(
+    nMinus2 = distance_by_element(lag(geometry, 2), geometry),  # distance to pos -20 minutes
+    nMinus1 = distance_by_element(lag(geometry, 1), geometry),  # distance to pos -10 minutes
+    nPlus1  = distance_by_element(geometry, lead(geometry, 1)), # distance to pos +10 minutes
+    nPlus2  = distance_by_element(geometry, lead(geometry, 2))  # distance to pos +20 minutes
+  )
+```
+
+```{r}
+sf <- sf |>
+  rowwise() |>
+  mutate(stepMean = mean(c(nMinus2, nMinus1, nPlus1, nPlus2))) |>
+  ungroup()
+
+threshold = mean(sf$stepMean, na.rm = TRUE)
+
+sf <- sf |>
+  mutate(static = stepMean < threshold)
+```
+
+## Task 3: Visualize segmented trajectories
+```{r}
+sf |>
+  ggplot(aes(x = "location-long", y = "location-lat", colour = static)) +
+  geom_path() +
+  geom_point() +
+  coord_equal() +
+  theme(legend.position = "bottom")
+```
+
+```{r}
+mcp <- st_convex_hull(sf)
+#plot(mcp, max.plot = 52)
+```
+
+## Visualize
+```{r}
+tmap_mode("view")
+tmap_options(max.categories = 35)
+tmap_options(basemaps = "OpenStreetMap")
+tm_shape(mcp) +
+  tm_dots(col = "individual-local-identifier")
+```
