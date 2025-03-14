@@ -98,7 +98,7 @@ tf <- tf |> mutate(Latitude = str_replace_all(Latitude, " ", ""))
 tf <- tf |> mutate(Longitude = str_replace_all(Longitude, " ", ""))
 tf <- tf |> mutate(Latitude = as.double(Latitude))
 tf <- tf |> mutate(Longitude = as.double(Longitude))
-df <- bind_rows(df_1, df_2, df_3, df_4, df_5)
+df <- bind_rows(tf, df_1, df_2, df_3, df_4, df_5)
 
 counts <- df |> 
   group_by(Source) |> 
