@@ -1,0 +1,72 @@
+---
+title: "Foxes with Move2"
+format: html
+editor: visual
+---
+
+## Libraries
+```{r}
+library("readr")
+library("ggplot2")
+library("sf")
+library("dplyr")
+library("tmap")
+library("lubridate")
+library("tidyr")
+library("move2")
+library("units")
+library("rnaturalearth")
+```
+
+## Load data
+
+```{r}
+mv <- mt_read("data/Red Fox (Vulpes vulpes) in UK wet grasslands.csv")
+```
+
+## Data checks
+```{r}
+mt_is_track_id_cleaved(mv)
+mt_is_time_ordered(mv)
+mt_has_unique_location_time_records(mv)
+mt_has_no_empty_points(mv)
+```
+
+## Segmentation
+```{r}
+fox_lines <- mv |>
+  mutate_track_data(name = "individual-tag-local-identifier") %>%
+  mutate(
+    large_gaps = !(mt_time_lags(.) < set_units(1500, "h") |
+      is.na(mt_time_lags(.))),
+    track_sub_id = cumsum(lag(large_gaps, default = FALSE)),
+    new_track_id = paste(mt_track_id(.), track_sub_id)
+  ) %>%
+  mt_set_track_id("new_track_id") |>
+  mt_track_lines()
+```
+
+## Plotting
+```{r}
+ggplot() +
+  geom_sf(
+    data = fox_lines,
+    aes(color = name)
+  )
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = ne_coastline(returnclass = "sf", 50)) +
+  theme_linedraw() +
+  geom_sf(
+    data = fox_lines,
+    aes(color = name)
+  ) +
+  coord_sf(
+    crs = sf::st_crs("+proj=aeqd +lon_0=0 +lat_0=50 +units=km"),
+    xlim = c(-450, 250), ylim = c(-100, 600)
+  )
+```
+
+
