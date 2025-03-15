@@ -28,9 +28,7 @@ movebank_store_credentials(
 ```
 
 ## Load movebank
-
 ```{r}
-
 all_studies <- movebank_download_study_info()
 cc_studies <- movebank_download_study_info(license_type = "CC_0")
 ```
@@ -42,43 +40,31 @@ fox_study <- cc_studies |>
 
 movebank_download_study_info(study_id = 3179890710)$sensor_type_ids
 
-mv <- movebank_download_study(
+data <- movebank_download_study(
   study_id = 3179890710,
   sensor_type_id = c("gps"),
   'license-md5'='ffa36f79defe10eac9fe70f6502a17e0'
 )
-#mv <- mt_read("data/Red Fox (Vulpes vulpes) in UK wet grasslands.csv")
 ```
-
 
 ## Data checks
 ```{r}
-mt_is_track_id_cleaved(mv)
-mt_is_time_ordered(mv)
-mt_has_unique_location_time_records(mv)
-mt_has_no_empty_points(mv)
-```
-
-## Segmentation
-```{r}
-fox_lines <- mv |>
-  mutate_track_data(name = "individual-tag-local-identifier") %>%
-  mutate(
-    large_gaps = !(mt_time_lags(.) < set_units(1500, "h") |
-      is.na(mt_time_lags(.))),
-    track_sub_id = cumsum(lag(large_gaps, default = FALSE)),
-    new_track_id = paste(mt_track_id(.), track_sub_id)
-  ) %>%
-  mt_set_track_id("new_track_id") |>
-  mt_track_lines()
+mt_is_track_id_cleaved(data)
+mt_is_time_ordered(data)
+mt_has_unique_location_time_records(data)
+mt_has_no_empty_points(data)
 ```
 
 ## Plotting
 ```{r}
 ggplot() +
   geom_sf(
-    data = fox_lines,
-    aes(color = name)
+    data = mt_track_lines(data),
+    aes(color = "all") # This column does not exist, aggregating all data
+  ) +
+  labs(
+    color = "Fox trails",
+    title = "Zoomed-in view of data location"
   )
 ```
 
@@ -86,10 +72,7 @@ ggplot() +
 ggplot() +
   geom_sf(data = ne_coastline(returnclass = "sf", 50)) +
   theme_linedraw() +
-  geom_sf(
-    data = fox_lines,
-    aes(color = name)
-  ) +
+  geom_sf(data = mt_track_lines(data), aes(color = "all")) +
   coord_sf(
     crs = sf::st_crs("+proj=aeqd +lon_0=0 +lat_0=50 +units=km"),
     xlim = c(-450, 250), ylim = c(-100, 600)
@@ -100,4 +83,43 @@ ggplot() +
   )
 ```
 
+```{r}
+ggplot() +
+  geom_sf(data = mt_track_lines(data), aes(color = individual_local_identifier)) +
+  labs(
+    color = "Fox trails",
+    title = "Individual fox trails per fox id"
+  )
+```
+
+```{r}
+ggplot() +
+  geom_sf(data = ne_coastline(returnclass = "sf", 10)) +
+  theme_linedraw() +
+  geom_sf(data = mt_track_lines(data), aes(color = individual_local_identifier)) +
+  coord_sf(
+    crs = sf::st_crs("+proj=aeqd +lon_0=-1.5 +lat_0=50.75 +units=km"),
+    xlim = c(-50, 50), ylim = c(-50, 50)
+  ) +
+  labs(
+    color = "Fox trails",
+    title = "Individual fox trails per fox id"
+  )
+```
+
+```{r}
+# TBD: This has a better background map but it's not immediately clear how to set the parameters
+ggplot() +
+  ggspatial::annotation_map_tile(zoom = 5) +
+  ggspatial::annotation_scale() +
+  theme_linedraw() +
+  geom_sf(data = data, color = "darkgrey", size = 1) +
+  geom_sf(data = mt_track_lines(data), aes(color = individual_local_identifier)) +
+  coord_sf(
+    crs = sf::st_crs("+proj=aeqd +lon_0=0 +lat_0=50 +units=km"),
+    xlim = c(-450, 250),
+    ylim = c(-100, 600)
+  ) +
+  guides(color = "none")
+```
 
