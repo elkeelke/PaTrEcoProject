@@ -132,3 +132,31 @@ ggplot() +
   guides(color = "none")
 ```
 
+## Net displacement
+```{r}
+displacement_data <- data |>
+  mutate(track_id = mt_track_id(data)) |>
+  group_by(track_id) |>
+    mutate(displacement = c(st_distance(
+    !!!syms(attr(data, "sf_column")),
+    (!!!syms(attr(data, "sf_column")))[row_number() == 1]
+  )))
+
+displacement_data |> ggplot() +
+  geom_line(aes(
+    x = timestamp,
+    y = set_units(displacement, "km"),
+    color = track_id
+  )) +
+  ylab("Distance from start") +
+  theme_linedraw()
+```
+
+```{r}
+counts_by_month_and_year <- st_drop_geometry(data) |>
+  mutate(month_year = paste(as.character(month(timestamp)), as.character(year(timestamp)), sep = "-")) |>
+
+ggplot(counts_by_month_and_year, aes(x = month_year)) +
+  geom_bar()
+```
+
