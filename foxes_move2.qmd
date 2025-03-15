@@ -18,11 +18,38 @@ library("units")
 library("rnaturalearth")
 ```
 
-## Load data
+```{r}
+movebank_store_credentials(
+  "elke.michlmayr",
+  "",
+  key_name = getOption("move2_movebank_key_name"),
+  force = FALSE
+)
+```
+
+## Load movebank
 
 ```{r}
-mv <- mt_read("data/Red Fox (Vulpes vulpes) in UK wet grasslands.csv")
+
+all_studies <- movebank_download_study_info()
+cc_studies <- movebank_download_study_info(license_type = "CC_0")
 ```
+
+## Load data
+```{r}
+fox_study <- cc_studies |>
+  filter(name == "Red Fox (Vulpes vulpes) in UK wet grasslands")
+
+movebank_download_study_info(study_id = 3179890710)$sensor_type_ids
+
+mv <- movebank_download_study(
+  study_id = 3179890710,
+  sensor_type_id = c("gps"),
+  'license-md5'='ffa36f79defe10eac9fe70f6502a17e0'
+)
+#mv <- mt_read("data/Red Fox (Vulpes vulpes) in UK wet grasslands.csv")
+```
+
 
 ## Data checks
 ```{r}
@@ -66,6 +93,10 @@ ggplot() +
   coord_sf(
     crs = sf::st_crs("+proj=aeqd +lon_0=0 +lat_0=50 +units=km"),
     xlim = c(-450, 250), ylim = c(-100, 600)
+  ) +
+  labs(
+    color = "Fox trails",
+    title = "High-level overview of data location"
   )
 ```
 
