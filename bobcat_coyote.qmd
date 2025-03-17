@@ -37,12 +37,26 @@ data <- movebank_download_study(
 
 ## What are the coyotes and what are the bobcats?
 
-The individual_local_identifiers starting with NECOY are Coyotes and the ones 
-starting with MVBOB are bobcats.
+The individual_local_identifiers with COY are Coyotes and the ones 
+starting with BOB are bobcats.
 
 ```{r}
 data <- data |> 
   mutate(animal_type = substr(individual_local_identifier, 1, 5))
+```
+
+## Is the mortality status in the data?
+```{r}
+mortality <- data |> 
+  st_set_geometry(NULL) |>
+  group_by(animal_type, individual_local_identifier, mortality_status) |>
+  summarise(cnt = n())
+  
+mortality <- mortality |>
+  select(animal_type, mortality_status) |>
+  group_by(animal_type) |>
+  filter(mortality_status == "Yes*")
+print(mortality)
 ```
 
 ## Plotting all data
@@ -97,19 +111,20 @@ displacement_data |> ggplot() +
   theme_linedraw()
 ```
 
-
-
 ## On a base map
 
 ```{r}
-sf <- st_as_sf(data, coords = c("location-long", "location-lat"), crs = 4326, remove = FALSE)
-#sf <- st_transform(sf, 2056)
-mcp <- st_convex_hull(sf)
-#plot(mcp)
-
-tmap_mode("view")
-tmap_options(basemaps = "OpenStreetMap")
-tm_shape(sf) +
-  tm_dots(size = "sensor_type_id")
+ggplot() +
+  ggspatial::annotation_map_tile(zoom = 5) +
+  ggspatial::annotation_scale() +
+  theme_linedraw() +
+  geom_sf(data = data, color = "darkgrey", size = 1) +
+  geom_sf(data = mt_track_lines(data), aes(color = individual_local_identifier)) +
+  coord_sf(
+    crs = sf::st_crs("+proj=aeqd +lon_0=-119 +lat_0=48 +units=km"),
+    xlim = c(-1000, 600),
+    ylim = c(-800, 700)
+  ) +
+  guides(color = "none")
 ```
 
