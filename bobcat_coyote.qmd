@@ -1,0 +1,115 @@
+---
+title: "Bobcat and coyote"
+format: html
+editor: visual
+---
+
+## Load libraries
+```{r}
+library("readr")
+library("ggplot2")
+library("sf")
+library("dplyr")
+library("tmap")
+library("lubridate")
+library("tidyr")
+library("move2")
+library("units")
+library("rnaturalearth")
+```
+
+## Load movebank studies
+```{r}
+all_studies <- movebank_download_study_info()
+cc_studies <- movebank_download_study_info(license_type = "CC_0")
+```
+
+## Load data for the bobcat/coyote study
+```{r}
+movebank_download_study_info(study_id = 2636372210)$sensor_type_ids
+
+data <- movebank_download_study(
+  study_id = 2636372210,
+  sensor_type_id = c("gps"),
+  'license-md5'='2253e05d47fd240054a126f011845acf'
+)
+```
+
+## What are the coyotes and what are the bobcats?
+
+The individual_local_identifiers starting with NECOY are Coyotes and the ones 
+starting with MVBOB are bobcats.
+
+```{r}
+data <- data |> 
+  mutate(animal_type = substr(individual_local_identifier, 1, 5))
+```
+
+## Plotting all data
+```{r}
+ggplot() +
+  geom_sf(
+    data = mt_track_lines(data),
+    aes(color = "all") # This column does not exist, aggregating all data
+  ) +
+  labs(
+    color = "Animal trails",
+    title = "Zoomed-in view of data location"
+  )
+```
+
+## Plotting by animal type
+```{r}
+tracks <- mt_track_lines(data)
+tracks <- tracks |> 
+  mutate(animal_type = substr(individual_local_identifier, 1, 5))
+ggplot() +
+  geom_sf(
+    data = tracks, 
+    aes(color = animal_type)
+  ) +
+  labs(
+    color = "Animal trails",
+    title = "Individual trails per animal type"
+  )
+```
+
+## Net displacement analysis
+
+Visualize the distance to the first location of each trajectory:
+
+```{r}
+displacement_data <- data |>
+  mutate(track_id = mt_track_id(data)) |>
+  group_by(track_id) |>
+    mutate(displacement = c(st_distance(
+    !!!syms(attr(data, "sf_column")),
+    (!!!syms(attr(data, "sf_column")))[row_number() == 1]
+  )))
+
+displacement_data |> ggplot() +
+  geom_line(aes(
+    x = timestamp,
+    y = set_units(displacement, "km"),
+    color = track_id
+  )) +
+  ylab("Distance from start") +
+  theme_linedraw()
+```
+
+
+
+## On a base map
+
+```{r}
+sf <- st_as_sf(data, coords = c("location-long", "location-lat"), crs = 4326, remove = FALSE)
+#sf <- st_transform(sf, 2056)
+mcp <- st_convex_hull(sf)
+#plot(mcp)
+
+tmap_mode("view")
+tmap_options(basemaps = "OpenStreetMap")
+tm_shape(sf) +
+  tm_dots(size = "sensor_type_id")
+```
+
