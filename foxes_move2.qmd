@@ -37,7 +37,7 @@ all_studies <- movebank_download_study_info()
 cc_studies <- movebank_download_study_info(license_type = "CC_0")
 ```
 
-## Load data for the red fox study
+## Load data for the red fox studies
 
 ```{r}
 fox_study <- cc_studies |>
@@ -69,7 +69,16 @@ print(fox_studies$taxon_ids)
 
 red_fox_studies <- cc_studies |>
   filter(taxon_ids == "Vulpes vulpes")
+
 # There are 2 other red fox studies from Canada with 2 foxes each (Argos tracking)
+canada_data_1 <- movebank_download_study(
+  study_id = 1371322147,
+  'license-md5'='9559cb1b1cca51e9f3fd69812e5e22dc'
+)
+canada_data_2 <- movebank_download_study(
+  study_id = 1371529289,
+  'license-md5'='436e8205d0c2973115e2024b146a6ad5'
+)
 ```
 
 ## Data checks (likely not actually required)
@@ -135,7 +144,9 @@ ggplot() +
 ```
 
 ```{r}
-# TBD: This has a better background map but it's not immediately clear how to set the parameters
+# This map doesn't work for the data because the it will only display city names
+# at zoom level 5 but then we can hardly see the fox data because the home ranges
+# are much smaller than the zoom level.
 ggplot() +
   ggspatial::annotation_map_tile(zoom = 5) +
   ggspatial::annotation_scale() +
@@ -184,3 +195,28 @@ ggplot(counts_by_month_and_year, aes(x = factor(month_year, levels = sort(unique
   geom_bar() +
   labs(title = "Number of data points over time", x = "Month and Year", y = "Data point count")
 ```
+
+## Home ranges
+```{r}
+tracks = mt_track_lines(data)
+mcp <- st_convex_hull(tracks)
+area <- st_area(mcp)
+print(area)
+ggplot(mcp, aes(fill = individual_id)) +
+  geom_sf(alpha = 0.4)
+
+c1_tracks = mt_track_lines(canada_data_1)
+c1_mcp <- st_convex_hull(c1_tracks)
+c1_area <- st_area(c1_mcp)
+print(c1_area)
+ggplot(c1_mcp, aes(fill = individual_id)) +
+  geom_sf(alpha = 0.4)
+
+c2_tracks = mt_track_lines(canada_data_2)
+c2_mcp <- st_convex_hull(c2_tracks)
+c2_area <- st_area(c2_mcp)
+print(c2_area)
+ggplot(c2_mcp, aes(fill = individual_id)) +
+  geom_sf(alpha = 0.4)
+```
+
