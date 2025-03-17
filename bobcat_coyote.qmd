@@ -54,8 +54,9 @@ mortality <- data |>
   
 mortality <- mortality |>
   select(animal_type, mortality_status) |>
+  filter(mortality_status == "Yes*") |>
   group_by(animal_type) |>
-  filter(mortality_status == "Yes*")
+  summarise(cnt = n())
 print(mortality)
 ```
 
