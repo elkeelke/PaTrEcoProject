@@ -5,6 +5,7 @@ editor: visual
 ---
 
 ## Load libraries
+
 ```{r}
 library("readr")
 library("ggplot2")
@@ -19,12 +20,14 @@ library("rnaturalearth")
 ```
 
 ## Load movebank studies
+
 ```{r}
 all_studies <- movebank_download_study_info()
 cc_studies <- movebank_download_study_info(license_type = "CC_0")
 ```
 
 ## Load data for the bobcat/coyote study
+
 ```{r}
 movebank_download_study_info(study_id = 2636372210)$sensor_type_ids
 
@@ -37,8 +40,7 @@ data <- movebank_download_study(
 
 ## What are the coyotes and what are the bobcats?
 
-The individual_local_identifiers with COY are Coyotes and the ones 
-starting with BOB are bobcats.
+The individual_local_identifiers with COY are Coyotes and the ones starting with BOB are bobcats.
 
 ```{r}
 data <- data |> 
@@ -46,6 +48,7 @@ data <- data |>
 ```
 
 ## Is the mortality status in the data?
+
 ```{r}
 mortality <- data |> 
   st_set_geometry(NULL) |>
@@ -61,6 +64,7 @@ print(mortality)
 ```
 
 ## Plotting all data
+
 ```{r}
 ggplot() +
   geom_sf(
@@ -74,6 +78,7 @@ ggplot() +
 ```
 
 ## Plotting by animal type
+
 ```{r}
 tracks <- mt_track_lines(data)
 tracks <- tracks |> 
@@ -128,4 +133,3 @@ ggplot() +
   ) +
   guides(color = "none")
 ```
-
